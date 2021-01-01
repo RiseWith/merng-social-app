@@ -3,20 +3,75 @@ const jwt = require("jsonwebtoken");
 const {UserInputError} = require('apollo-server');
 require("dotenv").config();
 
+const {
+  validateRegisterInput,
+  validateLoginInput,
+} = require("../../utils/validators");
 const User = require("../../models/User");
+
+
+const generateToken = (user) => {
+  return jwt.sign(
+        {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+        },
+        process.env.SECRET_KEY,
+        { expiresIn: "1h" }
+      )
+}
 
 module.exports = {
   Mutation: {
+    async login(parent, {username, password}) {
+      // Validate User Input
+      const { errors, valid } = validateLoginInput(username, password);
+
+      if (!valid) {
+        throw new UserInputError("Validation errors", { errors });
+      }
+
+      // Check if user exists
+      const user = await User.findOne({ username });
+
+      if (!user) {
+        errors.general = "User not found";
+        throw new UserInputError("User not found", { errors });
+      }
+
+      // Check if password matches
+      const isPasswordMatched = await bcrypt.compare(password, user.password);
+
+      if (!isPasswordMatched) {
+        errors.general = "Wrong credentials";
+        throw new UserInputError("Wrong credentials", { errors });
+      }
+
+      // Creating a JWT token
+      const token = generateToken(user);
+
+      return {
+        ...user._doc,
+        id: user._id,
+        token,
+      };
+    },
     async register(
       parent,
-      { registerInput: { username, password, confirmPassword, email } },
+      { registerInput: { username, email, password, confirmPassword } },
       context,
       info
     ) {
       // Validate User Input
-      if (password !== confirmPassword) {
-        throw new UserInputError("Passwords didn't match!");
+      const { errors, valid } = validateRegisterInput(username, email, password, confirmPassword);
+
+      if (!valid) {
+        throw new UserInputError("Validation errors", { errors });
       }
+
+
+
       // Check if the Username isn't already taken
       const user = await User.findOne({username});
 
@@ -40,15 +95,8 @@ module.exports = {
 
       const res = await newUser.save();
 
-      const token = jwt.sign(
-        {
-          id: res.id,
-          email: res.email,
-          username: res.username,
-        },
-        process.env.SECRET_KEY,
-        { expiresIn: "1h" }
-      );
+      // Creating a JWT token
+      const token = generateToken(res);
 
       return {
         ...res._doc,
