@@ -36,6 +36,10 @@ module.exports = {
     async createPost(parent, { body }, context) {
       const user = checkAuth(context);
 
+      if (body.trim() === '') {
+        throw new UserInputError("Post must not be empty");
+      }
+
       const newPost = new Post({
         body,
         user: user.id,
