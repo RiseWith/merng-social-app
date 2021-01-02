@@ -1,4 +1,4 @@
-const { ApolloServer } = require('apollo-server')
+const { ApolloServer, PubSub } = require('apollo-server')
 const mongoose = require('mongoose')
 //Setting up the env
 require('dotenv').config()
@@ -7,11 +7,15 @@ require('dotenv').config()
 const typeDefs = require('./graphql/typeDefs')
 const resolvers = require('./graphql/resolvers')
 
+// Subscriptions are GraphQL operations that watch events emitted from Apollo Server.
+// Subscriptions depend on use of a publish and subscribe primitive to generate the events that notify a subscription. 
+// PubSub is a factory that creates event generators that is provided by all supported packages.
+const pubsub = new PubSub();
 
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  context: ({ req }) => ({ req }) // Middleware needed for authentication check
+  context: ({ req }) => ({ req, pubsub }), // Middleware needed for authentication check
 });
 
 // Connecting to DB
