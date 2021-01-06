@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
 import gql from 'graphql-tag';
 import { Grid } from 'semantic-ui-react';
@@ -9,11 +9,19 @@ import PostCard from '../components/PostCard';
 
 
 const Home = () => {
-  const { loading, data: { getPosts: posts } } = useQuery(FETCH_POSTS_QUERY);
+  const { loading, data } = useQuery(FETCH_POSTS_QUERY);
+  const [ posts, setPosts ] = useState([]);
+
+  useEffect(() => {
+    if(data?.getPosts) {
+      setPosts(data.getPosts);
+    }
+  }, [data]);
+
   return (
     <Grid columns={3}>
       <Grid.Row>
-        <h1>Recent Posts</h1>
+        <h1 className="page-title">Recent Posts</h1>
       </Grid.Row>
 
       <Grid.Row>
@@ -22,8 +30,9 @@ const Home = () => {
             <h4>Loading posts...</h4>
           ):
           (
+            posts.length &&
             posts.map((post:any) => (
-              <Grid.Column key={post.id}>
+              <Grid.Column key={post.id} style={{marginBottom: '1rem'}}>
                 <PostCard post={post} />
               </Grid.Column>
             ))
